@@ -128,6 +128,11 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Advanced Heap Manager.cpp" />
+    <ClCompile Include="MemoryBlock.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="AdvancedHeapManager.h" />
+    <ClInclude Include="Heap.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
