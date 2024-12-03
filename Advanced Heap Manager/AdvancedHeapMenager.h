@@ -1,3 +1,4 @@
+#pragma once
 #ifndef ADVANCED_HEAP_MANAGER_H
 #define ADVANCED_HEAP_MANAGER_H
 
@@ -15,7 +16,8 @@ private:
 public:
     AdvancedHeapManager(size_t heapCount, size_t heapSize); // Konstruktor
     void* allocate(size_t size, int userID); // Round-robin alokacija memorije
-    bool deallocate(void* address);         // Dealokacija memorije u pravilan heap
+    bool free(void* address);         // Dealokacija memorije u pravilan heap
 };
 
 #endif // ADVANCED_HEAP_MANAGER_H
+

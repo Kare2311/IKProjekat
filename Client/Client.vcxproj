@@ -21,8 +21,8 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{531844da-eaee-4e06-97a6-972882cff186}</ProjectGuid>
-    <RootNamespace>AdvancedHeapManager</RootNamespace>
+    <ProjectGuid>{a7a98c18-dde8-44be-89a8-53629d22d1b5}</ProjectGuid>
+    <RootNamespace>Client</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -127,15 +127,7 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Server.cpp" />
-    <ClCompile Include="AdvancedHeapMenager.cpp" />
-    <ClCompile Include="Heap.cpp" />
-    <ClCompile Include="MemoryBlock.cpp" />
-  </ItemGroup>
-  <ItemGroup>
-    <ClInclude Include="AdvancedHeapMenager.h" />
-    <ClInclude Include="Heap.h" />
-    <ClInclude Include="MemoryBlock.h" />
+    <ClCompile Include="Client.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
