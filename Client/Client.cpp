@@ -5,32 +5,33 @@
 #include <ws2tcpip.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "conio.h"
+#include <string.h>
 
 #pragma comment (lib, "Ws2_32.lib")
-#pragma comment (lib, "Mswsock.lib")
-#pragma comment (lib, "AdvApi32.lib")
 
 #pragma pack(1)
 
 #define SERVER_IP_ADDRESS "127.0.0.1"
-#define SERVER_PORT 27016
-#define BUFFER_SIZE 256
+#define DEFAULT_PORT "27016"
+#define BUFFER_SIZE 512
 
-// TCP client that use non-blocking sockets
 int main()
 {
+    // WSADATA data structure that is to receive details of the Windows Sockets implementation
+    WSADATA wsaData;
+
     // Socket used to communicate with server
     SOCKET connectSocket = INVALID_SOCKET;
+
+    struct addrinfo* result = NULL, * ptr = NULL, hints;
 
     // Variable used to store function return value
     int iResult;
 
     // Buffer we will use to store message
-    char dataBuffer[BUFFER_SIZE];
+    char recvBuffer[BUFFER_SIZE];
 
-    // WSADATA data structure that is to receive details of the Windows Sockets implementation
-    WSADATA wsaData;
+    int recvBufferLen = BUFFER_SIZE;
 
     // Initialize windows sockets library for this process
     if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
@@ -39,11 +40,41 @@ int main()
         return 1;
     }
 
-    // create a socket
-    connectSocket = socket(AF_INET,
-        SOCK_STREAM,
-        IPPROTO_TCP);
+    ZeroMemory(&hints, sizeof(hints));
+    hints.ai_family = AF_INET;                  // IPv4 protocol
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP;
 
+    // Resolve the server address and port
+    iResult = getaddrinfo(SERVER_IP_ADDRESS, DEFAULT_PORT, &hints, &result);
+    if (iResult != 0) {
+        printf("getaddrinfo failed with error: %d\n", iResult);
+        WSACleanup();
+        return 1;
+    }
+
+    // Attempt to connect to an address until one succeeds
+    for (ptr = result; ptr != NULL; ptr = ptr->ai_next) 
+    {
+        // Create a socket for connecting to server
+        connectSocket = socket(ptr->ai_family, ptr->ai_socktype, ptr->ai_protocol);
+        if (connectSocket == INVALID_SOCKET) {
+            printf("socket failed with error: %ld\n", WSAGetLastError());
+            WSACleanup();
+            return 1;
+        }
+
+        // Connect to server
+        iResult = connect(connectSocket, ptr->ai_addr, (int)ptr->ai_addrlen);
+        if (iResult == SOCKET_ERROR) {
+            closesocket(connectSocket);
+            connectSocket = INVALID_SOCKET;
+            continue;
+        }
+        break;
+    }
+
+    freeaddrinfo(result);
 
     if (connectSocket == INVALID_SOCKET)
     {
@@ -52,66 +83,103 @@ int main()
         return 1;
     }
 
-    // Create and initialize address structure
-    sockaddr_in serverAddress;
-    serverAddress.sin_family = AF_INET;								// IPv4 protocol
-    serverAddress.sin_port = htons(SERVER_PORT);					// server port
+    printf("Connected to server.\n");
 
-    if (inet_pton(AF_INET, SERVER_IP_ADDRESS, &serverAddress.sin_addr) <= 0) {
-        printf("inet_pton failed with error: %d\n", WSAGetLastError());
-        return 1;  // Handle error appropriately
+    // Receive welcome message
+    iResult = recv(connectSocket, recvBuffer, recvBufferLen, 0);
+    if (iResult > 0) {
+        recvBuffer[iResult] = '\0';
+        printf("%s\n", recvBuffer);
     }
 
-    // Connect to server specified in serverAddress and socket connectSocket
-    iResult = connect(connectSocket, (SOCKADDR*)&serverAddress, sizeof(serverAddress));
-    if (iResult == SOCKET_ERROR)
+
+    while (1)
     {
-        printf("Unable to connect to server.\n");
-        closesocket(connectSocket);
-        WSACleanup();
-        return 1;
-    }
-
-    while (true)
-    {
-        // Input data to send
-        printf("Enter your message: ");
-        gets_s(dataBuffer, BUFFER_SIZE);
-
-        // Send the message to the server
-        iResult = send(connectSocket, dataBuffer, (int)strlen(dataBuffer), 0);
-
-
-        // Check result of send function
-        if (iResult == SOCKET_ERROR)
-        {
-            printf("send failed with error: %d\n", WSAGetLastError());
-            closesocket(connectSocket);
-            WSACleanup();
-            return 1;
+        // Receive menu message
+        iResult = recv(connectSocket, recvBuffer, recvBufferLen, 0);
+        if (iResult > 0) {
+            recvBuffer[iResult] = '\0';
+            printf("%s\n", recvBuffer);
         }
 
-        printf("Message successfully sent. Total bytes: %ld\n", iResult);
+        char sendBuffer[BUFFER_SIZE];
+        printf("Enter option: ");
 
-        printf("\nPress 'x' to exit or any other key to continue: ");
-        if (_getch() == 'x')
+        fgets(sendBuffer, BUFFER_SIZE, stdin);
+        sendBuffer[strcspn(sendBuffer, "\n")] = 0; // Remove newline character
+
+        int option = atoi(sendBuffer);
+
+        if (option == 0) {
+            snprintf(sendBuffer, BUFFER_SIZE, "0|0");
+            iResult = send(connectSocket, sendBuffer, (int)strlen(sendBuffer), 0);
             break;
+        }
+
+        // Handle option-specific communication
+        if (option == 1) {
+            // Allocate memory
+            char sizebuf[BUFFER_SIZE];
+            printf("Enter the number of bytes to allocate: ");
+            fgets(sizebuf, BUFFER_SIZE, stdin);
+            sizebuf[strcspn(sizebuf, "\n")] = 0; // Remove newline character
+
+            snprintf(sendBuffer, BUFFER_SIZE, "1|%s", sizebuf);
+
+            // Send option and memory size to server
+            iResult = send(connectSocket, sendBuffer, (int)strlen(sendBuffer), 0);
+            if (iResult == SOCKET_ERROR) {
+                printf("send failed with error: %d\n", WSAGetLastError());
+                closesocket(connectSocket);
+                WSACleanup();
+                return 1;
+            }
+
+            iResult = recv(connectSocket, recvBuffer, recvBufferLen, 0);
+            if (iResult > 0) {
+                recvBuffer[iResult] = '\0';
+                printf("%s\n", recvBuffer);
+            }
+        }
+
+        if (option == 2) {
+            // Free memory
+            char sizebuf[BUFFER_SIZE]; // Remove newline character
+
+            snprintf(sendBuffer, BUFFER_SIZE, "2|0");
+
+            // Send option to server
+            iResult = send(connectSocket, sendBuffer, (int)strlen(sendBuffer), 0);
+            if (iResult == SOCKET_ERROR) {
+                printf("send failed with error: %d\n", WSAGetLastError());
+                closesocket(connectSocket);
+                WSACleanup();
+                return 1;
+            }
+
+            //ispis zauzetih adresa u memoriji
+            iResult = recv(connectSocket, recvBuffer, recvBufferLen, 0);
+            if (iResult > 0) {
+                recvBuffer[iResult] = '\0';
+                printf("%s\n", recvBuffer);
+            }
+
+            printf("Choose an address where you want to free memory: ");
+            fgets(sendBuffer, BUFFER_SIZE, stdin);
+            sendBuffer[strcspn(sendBuffer, "\n")] = 0;
+
+            iResult = send(connectSocket, sendBuffer, (int)strlen(sendBuffer), 0);
+            if (iResult == SOCKET_ERROR) {
+                printf("send failed with error: %d\n", WSAGetLastError());
+                closesocket(connectSocket);
+                WSACleanup();
+                return 1;
+            }
+
+        }
+
+        
     }
-
-
-    // Shutdown the connection since we're done
-    iResult = shutdown(connectSocket, SD_BOTH);
-
-    // Check if connection is succesfully shut down.
-    if (iResult == SOCKET_ERROR)
-    {
-        printf("Shutdown failed with error: %d\n", WSAGetLastError());
-        closesocket(connectSocket);
-        WSACleanup();
-        return 1;
-    }
-
-    Sleep(1000);
 
     // Close connected socket
     closesocket(connectSocket);
@@ -120,5 +188,4 @@ int main()
     WSACleanup();
 
     return 0;
-
 }

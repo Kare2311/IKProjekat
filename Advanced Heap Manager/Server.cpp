@@ -3,43 +3,249 @@
 #include <windows.h>
 #include <winsock2.h>
 #include <ws2tcpip.h>
-#define WIN32_LEAN_AND_MEAN
-
-#include <windows.h>
-#include <winsock2.h>
-#include <ws2tcpip.h>
 #include <stdlib.h>
 #include <stdio.h>
-#include "conio.h"
+#include <string.h>
+#include <process.h>
 
 #pragma comment (lib, "Ws2_32.lib")
-#pragma comment (lib, "Mswsock.lib")
-#pragma comment (lib, "AdvApi32.lib")
 
-#pragma pack(1)
+#define DEFAULT_PORT "27016"
+#define BUFFER_SIZE 512
+#define MAX_CLIENTS 5
 
-#define SERVER_PORT 27016
-#define BUFFER_SIZE 256
-#define MAX_CLIENTS 3
 
-// TCP server that use non-blocking sockets
-int main()
-{
-	// Socket used for listening for new clients 
-	SOCKET listenSocket = INVALID_SOCKET;
+typedef struct ClientData {
+	SOCKET clientSocket;
+	int clientIndex;
+} ClientData;
 
-	// Sockets used for communication with client
-	SOCKET clientSockets[MAX_CLIENTS];
-	short lastIndex = 0;
 
-	// Variable used to store function return value
-	int iResult;
+bool clientSlots[MAX_CLIENTS] = { false }; //BOOL is either TRUE (used) or FALSE (free)
+ClientData* clientData[MAX_CLIENTS] = { NULL }; //clientData holds the client information
+
+void printClientStatus() {
+	int connectedClients = 0;
+	printf("\n=====================================================================\n");
+	printf("\t\t\tCurrent Client Slots Status");
+	printf("\n=====================================================================\n");
+	for (int i = 0; i < MAX_CLIENTS; i++) {
+		if (clientSlots[i]) { // Slot is occupied
+			printf("\tSlot %d: Occupied by Client %d (Socket %d)\n", i + 1, clientData[i]->clientIndex + 1, clientData[i]->clientSocket);
+
+			connectedClients++;
+		}
+		else { // Slot is free
+			printf("\tSlot %d: Free\n", i + 1);
+		}
+	}
+
+	printf("_____________________________________________________________________\n");
+	printf("\tTotal connected clients: %d", connectedClients);
+	printf("\n=====================================================================\n");
+}
+
+void printNewConnection(SOCKET clientSocket, int slotFound) {
+	printf("\n=====================================================================\n");
+	printf("\t\t\tNEW CLIENT CONNECTION");
+	printf("\n=====================================================================\n");
+	printf("\tSocket: %d\n", clientSocket);
+	printf("\tAssigned to Slot: %d", slotFound + 1);
+	printf("\n=====================================================================\n\n");
+
+
+}
+
+void printClientDisconnect(int clientIndex, int reason) {
+	printf("\n=====================================================================\n");
+	printf("\t\t\tCLIENT DISCONNECT REQUEST");
+	printf("\n=====================================================================\n");
+
+	switch (reason) {
+	case 0:
+		// Client explicitly requested to exit
+		printf("\tClient %d has requested to exit.\n", clientIndex + 1);
+		printf("\tConnection with client %d closed.", clientIndex + 1);
+		break;
+
+	case 1:
+		// Failed to receive data
+		printf("\tClient %d lost connection or failed to send data.\n", clientIndex + 1);
+		printf("\trecv failed with error: %d", WSAGetLastError());
+		break;
+
+	case 2:
+		// Timeout or other disconnection reason
+		printf("\tClient %d has disconnected due to timeout or other error.", clientIndex + 1);
+		break;
+
+	default:
+		printf("\tClient %d disconnected for an unknown reason.", clientIndex + 1);
+		break;
+	}
+	printf("\n=====================================================================\n");
+
+
+}
+
+void handleClient(void* clientData) {
+	ClientData* data = (ClientData*)clientData;
+	SOCKET clientSocket = data->clientSocket;
+	int clientIndex = data->clientIndex;
+
+	// Buffer used for storing the choosen option
+	char recvBuffer[BUFFER_SIZE];
 
 	// Buffer used for storing incoming data
 	char dataBuffer[BUFFER_SIZE];
 
+	// Buffer used response message
+	char sendBuffer[BUFFER_SIZE];
+
+	int iResult;
+
+	const char* welcomeMessage =
+		"Welcome to the server. \n";
+
+	const char* menuMessage =
+		"Choose a menu option:\n"
+		"\t1. Allocate memory\n"
+		"\t2. Free memory\n"
+		"\t0. Exit\n";
+
+	send(clientSocket, welcomeMessage, (int)strlen(welcomeMessage), 0);
+
+	while (1) {
+
+		send(clientSocket, menuMessage, (int)strlen(menuMessage), 0);
+		iResult = recv(clientSocket, recvBuffer, BUFFER_SIZE, 0);
+
+		if (iResult > 0) {
+			recvBuffer[iResult] = '\0';
+
+			char optionstr[BUFFER_SIZE];
+			char message[BUFFER_SIZE];
+
+			if (sscanf_s(recvBuffer, "%[^|]|%s", optionstr, sizeof(optionstr), message, sizeof(message)) == 2)
+			{
+				int option = atoi(optionstr);
+				switch (option)
+				{
+				case 1: {
+					printf("\n=====================================================================\n");
+					printf("\t\t\tMEMORY ALLOCATION REQUEST");
+					printf("\n=====================================================================\n");
+
+						message[iResult] = '\0';
+						int numBytes = atoi(message);
+						printf("\tClient %d has requested memory allocation\n", clientIndex + 1);
+						printf("\tRequested Memory Size: %d bytes", numBytes);
+
+						printf("\n=====================================================================\n");
+
+						//TO DO
+
+						sprintf_s(sendBuffer, "Allocating %d bytes of memory...", numBytes);
+						send(clientSocket, sendBuffer, (int)strlen(sendBuffer), 0);
+
+						//
+					break;
+				}
+				case 2: {
+					printf("\n=====================================================================\n");
+					printf("\t\tGET OCCUPIED MEMORY LOCATIONS REQUEST");
+					printf("\n=====================================================================\n");
+
+					printf("\tClient %d has requested to free memory\n", clientIndex + 1);
+					printf("\tSending occupied memory locations...");
+
+					//TO DO
+					const char* occupiedMemoryLocations = "spisak zauzetih memorijskih lokacija....";
+					//
+
+					send(clientSocket, occupiedMemoryLocations, (int)strlen(occupiedMemoryLocations), 0);
+
+					printf("\n=====================================================================\n");
+
+
+					iResult = recv(clientSocket, recvBuffer, BUFFER_SIZE, 0);
+
+					printf("\n=====================================================================\n");
+					printf("\t\t\tFREE MEMORY REQUEST");
+					printf("\n=====================================================================\n");
+
+					if (iResult > 0) {
+						recvBuffer[iResult] = '\0';
+						printf("\tClient %d has requested to free memory on %s location\n", clientIndex + 1, recvBuffer);
+						
+						printf("\n=====================================================================\n");
+
+						//TO DO
+					}
+					else {
+						printf("\tFailed to receive memory size or free memory request from client %d", clientIndex + 1);
+						printf("\n=====================================================================\n");
+					}
+
+					break;
+				}
+				case 0: {
+					printClientDisconnect(clientIndex, 0);
+					closesocket(clientSocket);
+					free(data);
+					clientSlots[clientIndex] = FALSE; // Slot is now free
+					printClientStatus();
+					_endthread();
+					return;
+				}
+				default:
+					const char* invalidMessage = "Invalid option. Please try again.";
+					send(clientSocket, invalidMessage, (int)strlen(invalidMessage), 0);
+					break;
+				}
+
+			}
+			
+
+		}
+		else if(iResult == 0)
+		{
+			printClientDisconnect(clientIndex, 0);
+			closesocket(clientSocket);
+			free(data);
+			clientSlots[clientIndex] = FALSE; // Slot is now free
+			printClientStatus();
+			_endthread();
+			return;
+			 
+		}
+		else
+		{
+			printClientDisconnect(clientIndex, 1);
+			closesocket(clientSocket);
+			free(data);
+			clientSlots[clientIndex] = FALSE; // Slot is now free
+			printClientStatus();
+			_endthread();
+			return;
+		}
+	}
+}
+
+
+int main()
+{
 	// WSADATA data structure that is to receive details of the Windows Sockets implementation
 	WSADATA wsaData;
+
+	// Variable used to store function return value
+	int iResult;
+
+	// Socket used for listening for new clients 
+	SOCKET listenSocket = INVALID_SOCKET;
+
+	struct addrinfo* result = NULL;
+	struct addrinfo hints;
 
 	// Initialize windows sockets library for this process
 	if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
@@ -48,197 +254,89 @@ int main()
 		return 1;
 	}
 
-	// Initialize serverAddress structure used by bind
-	sockaddr_in serverAddress;
-	memset((char*)&serverAddress, 0, sizeof(serverAddress));
-	serverAddress.sin_family = AF_INET;				// IPv4 address family
-	serverAddress.sin_addr.s_addr = INADDR_ANY;		// Use all available addresses
-	serverAddress.sin_port = htons(SERVER_PORT);	// Use specific port
+	ZeroMemory(&hints, sizeof(hints));
+	hints.ai_family = AF_INET;					// IPv4 address family
+	hints.ai_socktype = SOCK_STREAM;			// Stream socket
+	hints.ai_protocol = IPPROTO_TCP;			// TCP protocol
+	hints.ai_flags = AI_PASSIVE;				// Allow the server to bind to any address
 
-	//initialise all client_socket[] to 0 so not checked
-	memset(clientSockets, 0, MAX_CLIENTS * sizeof(SOCKET));
-
-	// Create a SOCKET for connecting to server
-	listenSocket = socket(AF_INET,      // IPv4 address family
-		SOCK_STREAM,  // Stream socket
-		IPPROTO_TCP); // TCP protocol
-
-	// Check if socket is successfully created
-	if (listenSocket == INVALID_SOCKET)
-	{
-		printf("socket failed with error: %ld\n", WSAGetLastError());
+	// Resolve the server address and port
+	iResult = getaddrinfo(NULL, DEFAULT_PORT, &hints, &result);
+	if (iResult != 0) {
+		printf("getaddrinfo failed with error: %d\n", iResult);
 		WSACleanup();
 		return 1;
 	}
 
-	// Setup the TCP listening socket - bind port number and local address to socket
-	iResult = bind(listenSocket, (struct sockaddr*)&serverAddress, sizeof(serverAddress));
+	// Create a socket for connecting to the server
+	listenSocket = socket(result->ai_family, result->ai_socktype, result->ai_protocol);
 
-	// Check if socket is successfully binded to address and port from sockaddr_in structure
-	if (iResult == SOCKET_ERROR)
-	{
+	// Check if socket is successfully created
+	if (listenSocket == INVALID_SOCKET) {
+		printf("socket failed with error: %ld\n", WSAGetLastError());
+		freeaddrinfo(result);
+		WSACleanup();
+		return 1;
+	}
+
+
+	// Set listenSocket in listening mode
+	iResult = bind(listenSocket, result->ai_addr, (int)result->ai_addrlen);
+
+	if (iResult == SOCKET_ERROR) {
 		printf("bind failed with error: %d\n", WSAGetLastError());
+		freeaddrinfo(result);
 		closesocket(listenSocket);
 		WSACleanup();
 		return 1;
 	}
 
-	//// All connections are by default accepted by protocol stek if socket is in listening mode.
-	//// With SO_CONDITIONAL_ACCEPT parameter set to true, connections will not be accepted by default
-	bool bOptVal = true;
-	int bOptLen = sizeof(bool);
-	iResult = setsockopt(listenSocket, SOL_SOCKET, SO_CONDITIONAL_ACCEPT, (char*)&bOptVal, bOptLen);
-	if (iResult == SOCKET_ERROR) {
-		printf("setsockopt for SO_CONDITIONAL_ACCEPT failed with error: %u\n", WSAGetLastError());
-	}
+	freeaddrinfo(result);
 
-	unsigned long  mode = 1;
-	if (ioctlsocket(listenSocket, FIONBIO, &mode) != 0)
-		printf("ioctlsocket failed with error.");
-
-	// Set listenSocket in listening mode
+	// Set the socket to listen mode
 	iResult = listen(listenSocket, SOMAXCONN);
-	if (iResult == SOCKET_ERROR)
-	{
+	if (iResult == SOCKET_ERROR) {
 		printf("listen failed with error: %d\n", WSAGetLastError());
 		closesocket(listenSocket);
 		WSACleanup();
 		return 1;
 	}
 
-	printf("Server socket is set to listening mode. Waiting for new connection requests.\n");
+	printf("Server is listening on port %s\n", DEFAULT_PORT);
 
-	// set of socket descriptors
-	fd_set readfds;
-
-	// timeout for select function
-	timeval timeVal;
-	timeVal.tv_sec = 1;
-	timeVal.tv_usec = 0;
-
-	char message[] = "";
-
-	while (true) {
-
-		// initialize socket set
-		FD_ZERO(&readfds);
-
-		// add server's socket and clients' sockets to set
-		if (lastIndex != MAX_CLIENTS)
-		{
-			FD_SET(listenSocket, &readfds);
-		}
-
-		for (int i = 0; i < lastIndex; i++)
-		{
-			FD_SET(clientSockets[i], &readfds);
-		}
-
-		// wait for events on set
-		int selectResult = select(0, &readfds, NULL, NULL, &timeVal);
-
-		if (selectResult == SOCKET_ERROR)
-		{
-			printf("Select failed with error: %d\n", WSAGetLastError());
-			closesocket(listenSocket);
-			WSACleanup();
-			return 1;
-		}
-		else if (selectResult == 0) // timeout expired
-		{
-			if (_kbhit()) //check if some key is pressed
-			{
-				_getch();
-				printf("Primena racunarskih mreza u infrstrukturnim sistemima 2019/2020\n");
-			}
+	while (1)
+	{
+		SOCKET clientSocket = accept(listenSocket, NULL, NULL);
+		if (clientSocket == INVALID_SOCKET) {
+			printf("accept failed with error: %d\n", WSAGetLastError());
 			continue;
 		}
-		else if (FD_ISSET(listenSocket, &readfds))
-		{
-			// Struct for information about connected client
-			sockaddr_in clientAddr;
-			char ipAddress[INET_ADDRSTRLEN]; // Buffer for storing IP address
 
-			// Initialize clientAddrSize before calling accept
-			int clientAddrSize = sizeof(clientAddr);
-
-			// New connection request is received. Add new socket in array on first free position.
-			clientSockets[lastIndex] = accept(listenSocket, (struct sockaddr*)&clientAddr, &clientAddrSize);
-		
-			if (clientSockets[lastIndex] == INVALID_SOCKET)
-			{
-				if (WSAGetLastError() == WSAECONNRESET)
-				{
-					printf("accept failed, because timeout for client request has expired.\n");
-				}
-				else
-				{
-					printf("accept failed with error: %d\n", WSAGetLastError());
-				}
+		int slotFound = -1;
+		for (int i = 0; i < MAX_CLIENTS; i++) {
+			if (!clientSlots[i]) {
+				slotFound = i;
+				clientSlots[i] = TRUE;
+				break;
 			}
-			else
-			{
-				if (inet_ntop(AF_INET, &clientAddr.sin_addr, ipAddress, sizeof(ipAddress)) == NULL)
-				{
-					printf("inet_ntop failed with error: %d\n", WSAGetLastError());
-					continue;
-				}
-				lastIndex++;
-				printf("New client request accepted (%d). Client address: %s : %d\n", lastIndex, ipAddress, ntohs(clientAddr.sin_port));
+		}
 
-			}
+		if (slotFound == -1) {
+			printf("Max clients reached. Rejecting new connection.\n");
+			closesocket(clientSocket);
 		}
 		else {
-			// Check if new message is received from connected clients
-			for (int i = 0; i < lastIndex; i++)
-			{
-				// Check if new message is received from client on position "i"
-				if (FD_ISSET(clientSockets[i], &readfds))
-				{
-					iResult = recv(clientSockets[i], dataBuffer, BUFFER_SIZE, 0);
+			printNewConnection(clientSocket, slotFound);
+			clientData[slotFound] = (ClientData*)malloc(sizeof(ClientData));
+			clientData[slotFound]->clientSocket = clientSocket;
+			clientData[slotFound]->clientIndex = slotFound;
 
-					if (iResult > 0)
-					{
-						dataBuffer[iResult] = '\0';
-						printf("Message received from client (%d):\n", i + 1);
-						printf("\t%s\n", dataBuffer);
-						printf("_______________________________  \n");
+			printClientStatus();
 
-					}
-					else if (iResult == 0)
-					{
-						// connection was closed gracefully
-						printf("Connection with client (%d) closed.\n", i + 1);
-						closesocket(clientSockets[i]);
-
-						// sort array and clean last place
-						for (int j = i; j < lastIndex - 1; j++)
-						{
-							clientSockets[j] = clientSockets[j + 1];
-						}
-						clientSockets[lastIndex - 1] = 0;
-
-						lastIndex--;
-					}
-					else
-					{
-						// there was an error during recv
-						printf("recv failed with error: %d\n", WSAGetLastError());
-						closesocket(clientSockets[i]);
-
-						// sort array and clean last place
-						for (int j = i; j < lastIndex - 1; j++)
-						{
-							clientSockets[j] = clientSockets[j + 1];
-						}
-						clientSockets[lastIndex - 1] = 0;
-
-						lastIndex--;
-					}
-				}
-			}
+			_beginthread(handleClient, 0, (void*)clientData[slotFound]);
 		}
 	}
+
 
 	//Close listen and accepted sockets
 	closesocket(listenSocket);
