@@ -127,8 +127,15 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+<<<<<<< Updated upstream
     <ClCompile Include="Advanced Heap Manager.cpp" />
     <ClCompile Include="MemoryBlock.h" />
+=======
+    <ClCompile Include="Server.cpp" />
+    <ClCompile Include="AdvancedHeapManager.cpp" />
+    <ClCompile Include="Heap.cpp" />
+    <ClCompile Include="MemoryBlock.cpp" />
+>>>>>>> Stashed changes
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AdvancedHeapManager.h" />
