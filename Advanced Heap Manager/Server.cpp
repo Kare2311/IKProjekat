@@ -1,4 +1,4 @@
-#define WIN32_LEAN_AND_MEAN
+﻿#define WIN32_LEAN_AND_MEAN
 
 #include <windows.h>
 #include <winsock2.h>
@@ -136,19 +136,19 @@ void handleClient(void* clientData) {
 					printf("\t\t\tMEMORY ALLOCATION REQUEST");
 					printf("\n=====================================================================\n");
 
-						message[iResult] = '\0';
-						int numBytes = atoi(message);
-						printf("\tClient %d has requested memory allocation\n", clientIndex + 1);
-						printf("\tRequested Memory Size: %d bytes", numBytes);
+					message[iResult] = '\0';
+					int numBytes = atoi(message);
+					printf("\tClient %d has requested memory allocation\n", clientIndex + 1);
+					printf("\tRequested Memory Size: %d bytes", numBytes);
 
-						printf("\n=====================================================================\n");
+					printf("\n=====================================================================\n");
 
-						//TO DO
+					//TO DO
 
-						sprintf_s(sendBuffer, "Allocating %d bytes of memory...", numBytes);
-						send(clientSocket, sendBuffer, (int)strlen(sendBuffer), 0);
+					sprintf_s(sendBuffer, "Allocating %d bytes of memory...", numBytes);
+					send(clientSocket, sendBuffer, (int)strlen(sendBuffer), 0);
 
-						//
+					//
 					break;
 				}
 				case 2: {
@@ -177,7 +177,7 @@ void handleClient(void* clientData) {
 					if (iResult > 0) {
 						recvBuffer[iResult] = '\0';
 						printf("\tClient %d has requested to free memory on %s location\n", clientIndex + 1, recvBuffer);
-						
+
 						printf("\n=====================================================================\n");
 
 						//TO DO
@@ -205,10 +205,10 @@ void handleClient(void* clientData) {
 				}
 
 			}
-			
+
 
 		}
-		else if(iResult == 0)
+		else if (iResult == 0)
 		{
 			printClientDisconnect(clientIndex, 0);
 			closesocket(clientSocket);
@@ -217,7 +217,7 @@ void handleClient(void* clientData) {
 			printClientStatus();
 			_endthread();
 			return;
-			 
+
 		}
 		else
 		{
@@ -345,7 +345,5 @@ int main()
 	WSACleanup();
 
 	return 0;
-    
+
 }
-
-

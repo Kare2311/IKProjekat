@@ -128,12 +128,12 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Server.cpp" />
-    <ClCompile Include="AdvancedHeapMenager.cpp" />
+    <ClCompile Include="AdvancedHeapManager.cpp" />
     <ClCompile Include="Heap.cpp" />
     <ClCompile Include="MemoryBlock.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="AdvancedHeapMenager.h" />
+    <ClInclude Include="AdvancedHeapManager.h" />
     <ClInclude Include="Heap.h" />
     <ClInclude Include="MemoryBlock.h" />
   </ItemGroup>

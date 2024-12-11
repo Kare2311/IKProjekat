@@ -1,4 +1,4 @@
-#include "Heap.h"
+﻿#include "Heap.h"
 
 Heap::Heap(size_t size) : totalSize(size), usedSize(0) {
     // Inicijalizacija heap-a sa pocetnim slobodnim blokom

@@ -24,7 +24,7 @@
     <ClCompile Include="MemoryBlock.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="AdvancedHeapMenager.cpp">
+    <ClCompile Include="AdvancedHeapManager.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -35,7 +35,7 @@
     <ClInclude Include="MemoryBlock.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="AdvancedHeapMenager.h">
+    <ClInclude Include="AdvancedHeapManager.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
