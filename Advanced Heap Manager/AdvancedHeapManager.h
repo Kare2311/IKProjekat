@@ -2,23 +2,30 @@
 #ifndef ADVANCED_HEAP_MANAGER_H
 #define ADVANCED_HEAP_MANAGER_H
 
-#include <vector>
-#include <mutex>
+#include <windows.h> 
 #include "Heap.h"
 
 class AdvancedHeapManager {
 private:
-    std::vector<Heap> heaps;       // Niz heap-ova
-    size_t heapCount;              // Ukupan broj heap-ova
-    size_t currentHeapIndex;       // Indeks trenutnog heap-a za round-robin
-    std::mutex lock;
+    Heap* m_heaps;
+    size_t m_heap_count;
+    size_t m_current_heap_idx;
+
+    CRITICAL_SECTION m_lock;     // Kriticna sekcija za sinhronizaciju pristupa AHM-u
 
 public:
-    AdvancedHeapManager(size_t heapCount, size_t heapSize); // Konstruktor
+    AdvancedHeapManager(size_t heapCount, size_t heapSize);
+    ~AdvancedHeapManager();
 
-    void* allocate(size_t size, int userID); // Round-robin alokacija memorije
-    bool free(void* address);         // Dealokacija memorije u pravilan heap
+
+    void* allocate(size_t size, int thread_id);
+    void free(void* ptr);
+
+    void get_heap_stats(size_t heap_index, size_t& used_size, size_t& total_size) const;
+
+    size_t get_heap_index(void* ptr) const;
+
+    Heap* get_heap(size_t index);
 };
 
 #endif // ADVANCED_HEAP_MANAGER_H
-

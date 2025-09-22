@@ -1,43 +1,79 @@
 ﻿#include "AdvancedHeapManager.h"
+#include <iostream>
 
-// Konstruktor
-AdvancedHeapManager::AdvancedHeapManager(size_t heapCount, size_t heapSize)
-    : heapCount(heapCount), currentHeapIndex(0) {
-    for (size_t i = 0; i < heapCount; ++i) {
-        heaps.push_back(Heap(heapSize));
+AdvancedHeapManager::AdvancedHeapManager(size_t heap_count, size_t heap_size) {
+    m_heap_count = heap_count;
+    m_current_heap_idx = 0;
+
+    m_heaps = new Heap[m_heap_count];
+
+    // inicijalizacija heap-ova u nizu
+    for (size_t i = 0; i < m_heap_count; ++i) {
+        m_heaps[i].init(heap_size);
+    }
+
+    InitializeCriticalSection(&m_lock);
+}
+
+AdvancedHeapManager::~AdvancedHeapManager() {
+    delete[] m_heaps;
+    DeleteCriticalSection(&m_lock);
+}
+
+// Allocate funkcija sa Round-Robin logikom
+void* AdvancedHeapManager::allocate(size_t size, int thread_id) {
+    int heap_to_use;
+
+    EnterCriticalSection(&m_lock);
+    heap_to_use = m_current_heap_idx;
+    m_current_heap_idx = (m_current_heap_idx + 1) % m_heap_count;
+
+
+
+
+    LeaveCriticalSection(&m_lock);
+
+    // Pozivamo allocate na izabranom heapu
+    return m_heaps[heap_to_use].allocate(size, heap_to_use);
+}
+
+// Free funkcija koja pronalazi pravi heap
+void AdvancedHeapManager::free(void* ptr) {
+    if (ptr == nullptr) {
+        return;
+    }
+
+    size_t heap_index = get_heap_index(ptr);
+
+    if (heap_index < m_heap_count) {
+        m_heaps[heap_index].free(ptr);
+    }
+
+
+}
+
+void AdvancedHeapManager::get_heap_stats(size_t heap_index, size_t& used_size, size_t& total_size) const {
+    if (heap_index < m_heap_count) {
+        used_size = m_heaps[heap_index].get_used_size();
+        total_size = m_heaps[heap_index].get_total_size();
     }
 }
 
-// Funkcija za alokaciju memorije
-void* AdvancedHeapManager::allocate(size_t size, int userID) {
-    // Prolazimo kroz sve heap-ove da bismo pronašli prvi koji ima dovoljno slobodne memorije
-    for (size_t i = 0; i < heapCount; ++i) {
-        size_t heapIndex = (currentHeapIndex + i) % heapCount;
-
-        // Proveravamo da li trenutni heap može da alocira traženu količinu memorije
-        void* allocatedMemory = heaps[heapIndex].allocate(size, userID);
-
-        // Ako je alokacija uspela, vratimo pokazivač na alociranu memoriju
-        if (allocatedMemory != nullptr) {
-            currentHeapIndex = (heapIndex + 1) % heapCount;  // Ažuriraj trenutni index heap-a za sledeću alokaciju
-            return allocatedMemory;
-        }
+size_t AdvancedHeapManager::get_heap_index(void* ptr) const {
+    if (ptr == nullptr) {
+        return (size_t)-1;
     }
 
-    // Ako nijedan heap ne može da obezbedi memoriju, vraćamo nullptr
+    // Računamo adresu MemoryBlock headera
+    const MemoryBlock* block_header = (const MemoryBlock*)((const char*)ptr - sizeof(MemoryBlock));
+
+    return block_header->heap_index;
+}
+
+Heap* AdvancedHeapManager::get_heap(size_t index) {
+    // Proveravamo da li je traženi indeks u ispravnom opsegu
+    if (index < m_heap_count) {
+        return &m_heaps[index];
+    }
     return nullptr;
 }
-
-//Metoda allocate pokušava da alocira memoriju u različitim heap - ovima u cikličnoj naredbi i vraća pokazivač na alociranu memoriju.
-
-// Funkcija za dealokaciju memorije
-bool AdvancedHeapManager::free(void* address) {
-    for (auto& heap : heaps) {
-        if (heap.free(address)) {
-            return true;  // Ako je dealokacija uspela
-        }
-    }
-    return false;  // Ako nije pronađena adresa za dealokaciju
-}
-
-// Metoda free pokušava da oslobodi memoriju na datoj adresi u svim heap-ovima i vraća true ako je oslobađanje uspešno. nisam siguran dal sam dobro razume da ovako treba da se radi
