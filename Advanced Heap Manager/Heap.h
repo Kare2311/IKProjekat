@@ -2,48 +2,40 @@
 #ifndef HEAP_H
 #define HEAP_H
 
-#include <vector>
-#include <mutex>
+#include <windows.h> 
 #include "MemoryBlock.h"
 
 class Heap {
 private:
-    size_t totalSize;             // Ukupna veličina heap-a
-    size_t usedSize;              // Zauzeta veličina heap-a
-    std::vector<MemoryBlock> blocks;  // Blokovi memorije u heap-u
-    std::mutex lock;              // Mutex za zaštitu operacija unutar heap-a
+    void* m_start_ptr;        // Pokazivač na početak memorije kojom heap upravlja
+    size_t m_total_size;      // Ukupna veličina te memorije
+    size_t m_used_size;
 
+    MemoryBlock* m_free_list_head; // Glava liste slobodnih blokova
+    CRITICAL_SECTION m_lock;  // Kriticna sekcija za sinhronizaciju pristupa ovom heap-u
+
+    static const size_t MIN_BLOCK_ALLOCATION_SIZE = 16;  // Minimalna veličina korisničkog dela memorije za novi blok
 public:
-    Heap(size_t size);            // Konstruktor
-    Heap(const Heap&) = delete;   // Zabranjujemo kopiranje  //Ovaj konstruktor je obrisan (deleted). To znači da nije dozvoljeno da se objekti klase Heap kopiraju. Kopiranje objekta ove klase nije moguće
-    Heap& operator=(const Heap&) = delete;  // Zabranjujemo dodelu kopiranjem   //Slično kao kopirni konstruktor, ovaj operator dodela je takođe obrisan. To znači da nije moguće dodeliti jedan objekat klase Heap drugom putem dodeljivanja, jer bi to moglo izazvati nepoželjno kopiranje resursa
+    Heap();
+    ~Heap();
 
-    // Move konstruktor  umesto pravljenja kopije uradi se move
-    Heap(Heap&& other) {
-        totalSize = other.totalSize;
-        usedSize = other.usedSize;
-        blocks = std::move(other.blocks);  // Premestamo vektor blokova
-        // Mutex ne premestamo, samo ga ostavljamo u izvornom objektu
-    }
-     
-    // Move dodela operator  Ovaj operator se poziva kada se dodeljuje vrednost objekta Heap iz drugog objekta Heap
-    Heap& operator=(Heap&& other) {
-        if (this != &other) {  // Provera da se ne premesti u sebe
-            totalSize = other.totalSize;
-            usedSize = other.usedSize;
-            blocks = std::move(other.blocks);  // Premestamo vektor blokova
-            // Mutex ne premestamo, samo ga ostavljamo u izvornom objektu
-        }
-        return *this;
-    }
+    // Inicijalizacija heapa - alocira memoriju i postavlja prvi slobodan blok
+    void init(size_t size);
 
-    void* allocate(size_t size, int userID);  // Alokacija memorije
-    bool free(void* address);             // Dealokacija memorije
-    size_t getUsedSize() const;    // Zauzeta veličina
-    size_t getFreeSize() const;    // Slobodna veličina
+    // Funkcija za alokaciju memorije unutar ovog heapa
+    void* allocate(size_t size, size_t heap_index);
+
+    // Funkcija za dealokaciju memorije
+    void free(void* ptr);
+
+    // Pomoćne funkcije
+    bool is_address_in_heap(void* ptr) const;
+
+    size_t get_used_size() const;
+    size_t get_total_size() const;
+
+    void print_layout() const;
 };
 
-#endif // HEAP_H
 
-//Greška koju dobijaš(attempting to reference a deleted function) ukazuje na to da se pokušava kopirati objekat klase Heap, 
-//ali konstruktor kopije za tu klasu nije definisan ili je izričito obrisan.Ovo se često dešava kada klasa koristi članove poput std::mutex, koji nisu kopirljivi.
+#endif // HEAP_H

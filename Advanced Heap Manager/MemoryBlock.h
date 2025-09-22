@@ -1,19 +1,20 @@
+﻿#pragma once
 #pragma once
 #ifndef MEMORY_BLOCK_H
 #define MEMORY_BLOCK_H
-#define MIN_BLOCK_SIZE 5
 
-#include <cstddef> // za size_t
+#include <cstddef>
 
+// header koji se nalazi na početku svakog memorijskog bloka(i slobodnog i zauzetog).
+// Služi nam da bismo znali veličinu bloka i da bismo mogli da formiramo listu slobodnih blokova.
 struct MemoryBlock {
-    void* address;    // Adresa bloka memorije
-    size_t size;      // Velicina bloka memorije
-    bool free;        // Status: true ako je slobodan, false ako je zauzet
-    int userID;       // ID korisnika koji koristi ovaj blok
+    size_t size;      // Veličina celog bloka (uključujući i ovaj header)
+    bool is_free;     // Status bloka
 
-    // Konstruktor za inicijalizaciju
-    MemoryBlock(void* addr, size_t s, bool f, int id)
-        : address(addr), size(s), free(f), userID(id) {}
+    MemoryBlock* next_free; // Pokazivač na sledeći SLOBODAN blok u listi
+    MemoryBlock* prev_free; // Pokazivač na prethodni SLOBODAN blok u listi
+
+    size_t heap_index;
 };
 
 #endif // MEMORY_BLOCK_H
