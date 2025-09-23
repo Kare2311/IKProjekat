@@ -1,13 +1,13 @@
 ﻿#include "ThreadPool.h"
 #include <process.h>
-#include "ClientHandler.h" // Za ClientHandlerThread funkciju
+#include "ClientHandler.h" 
 
 ThreadPool::ThreadPool(int num_threads) {
     m_num_threads = num_threads;
     m_threads = new HANDLE[m_num_threads];
     m_stop_threads = false;
 
-    // Inicijalizacija kružnog bafera
+    
     m_queue_capacity = 256; // Npr. može da primi 256 zadataka pre nego što blokira
     m_task_queue = new void* [m_queue_capacity];
     m_head = 0;
@@ -80,7 +80,6 @@ DWORD WINAPI ThreadPool::worker_thread_start(LPVOID param) {
         // Signaliziramo da sada ima jedno slobodno mesto više u redu
         ReleaseSemaphore(pool->m_space_available, 1, NULL);
 
-        // --- IZVRŠAVANJE ZADATKA ---
         // Pozivamo našu staru funkciju za obradu klijenta sa preuzetim zadatkom
         ClientHandlerThread(task);
     }
