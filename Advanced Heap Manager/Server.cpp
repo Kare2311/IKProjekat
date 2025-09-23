@@ -6,6 +6,8 @@
 #include <process.h>
 #include <windows.h>
 #include "AdvancedHeapManager.h"
+#include "ThreadPool.h"
+#include "ClientHandler.h"
 
 #pragma comment(lib, "Ws2_32.lib")
 
