@@ -1,6 +1,5 @@
 ﻿#include "ThreadPool.h"
 #include <process.h>
-#include "ClientHandler.h" 
 
 ThreadPool::ThreadPool(int num_threads) {
     m_num_threads = num_threads;
@@ -80,8 +79,6 @@ DWORD WINAPI ThreadPool::worker_thread_start(LPVOID param) {
         // Signaliziramo da sada ima jedno slobodno mesto više u redu
         ReleaseSemaphore(pool->m_space_available, 1, NULL);
 
-        // Pozivamo našu staru funkciju za obradu klijenta sa preuzetim zadatkom
-        ClientHandlerThread(task);
     }
     return 0;
 }
